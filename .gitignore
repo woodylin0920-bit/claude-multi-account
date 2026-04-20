@@ -1,0 +1,6 @@
+.secrets/
+*.local
+*.local.zsh
+.env
+*.bak
+.DS_Store
