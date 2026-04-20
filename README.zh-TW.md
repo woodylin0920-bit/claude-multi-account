@@ -1,5 +1,10 @@
 [English](README.md)
 
+![macOS](https://img.shields.io/badge/macOS-only-lightgrey?logo=apple)
+![Shell](https://img.shields.io/badge/shell-zsh-green?logo=gnu-bash)
+![License](https://img.shields.io/github/license/woodylin0920-bit/claude-multi-account)
+![Version](https://img.shields.io/github/v/release/woodylin0920-bit/claude-multi-account?include_prereleases)
+
 # claude-multi-account
 
 在同一台 Mac 上管理多個 Claude Code 帳號 — 透過 `CLAUDE_CONFIG_DIR` 繞過 macOS Keychain 單帳號限制。

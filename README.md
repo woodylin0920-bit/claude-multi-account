@@ -1,5 +1,10 @@
 [繁體中文](README.zh-TW.md)
 
+![macOS](https://img.shields.io/badge/macOS-only-lightgrey?logo=apple)
+![Shell](https://img.shields.io/badge/shell-zsh-green?logo=gnu-bash)
+![License](https://img.shields.io/github/license/woodylin0920-bit/claude-multi-account)
+![Version](https://img.shields.io/github/v/release/woodylin0920-bit/claude-multi-account?include_prereleases)
+
 # claude-multi-account
 
 Manage multiple Claude Code accounts on the same Mac — bypass the single-token Keychain limitation via `CLAUDE_CONFIG_DIR`.
