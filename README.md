@@ -1,139 +1,194 @@
+[繁體中文](README.zh-TW.md)
+
 # claude-multi-account
 
-在同一台 Mac 上管理多個 Claude Code 帳號的 zsh 工具集。
+Manage multiple Claude Code accounts on the same Mac — bypass the single-token Keychain limitation via `CLAUDE_CONFIG_DIR`.
 
-## 問題背景
+> **macOS only.** Built on top of [claude-monitor](https://github.com/doobidoo/claude-monitor) and [ccusage](https://github.com/ryoppippi/ccusage).
 
-macOS Keychain **只能存一個** Claude OAuth token。當你有工作帳號（Max）和個人帳號（Pro）時，每次切換都要重新 `/login`，非常麻煩。
+## The Problem
 
-**解法**：Claude Code 支援 `CLAUDE_CONFIG_DIR` 環境變數，讓每個帳號使用獨立的 config 目錄（`~/.claude-work`、`~/.claude-personal`...），token 互不干擾。這個工具集把這個模式包裝成方便的指令。
+macOS Keychain stores **only one** Claude OAuth token. If you have a work account (Max) and a personal account (Pro), you have to `/login` again every time you switch — losing your active session in the process.
 
-## 需求
+**The fix:** Claude Code respects the `CLAUDE_CONFIG_DIR` environment variable. Point each alias at its own directory (`~/.claude-work`, `~/.claude-personal`, …) and the tokens never collide.
 
-| 工具 | 用途 | 必要？ |
-|------|------|--------|
-| [Claude Code CLI](https://claude.ai/download) | 核心 | ✅ 必要 |
-| [claude-monitor](https://github.com/doobidoo/claude-monitor) | 即時用量監控（`monitor-*`） | 選用 |
-| [ccusage](https://github.com/ryoppippi/ccusage) | 歷史用量查詢（`usage-*`） | 選用 |
+---
 
-## 安裝
+## Quick Start
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/claude-multi-account.git
+# 1. Clone and install
+git clone https://github.com/woodylin0920-bit/claude-multi-account.git
+cd claude-multi-account
+bash install.sh
+
+# 2. Edit the config file — uncomment the alias lines for your accounts
+#    (replace "work" / "personal" with whatever names you prefer)
+open ~/.config/claude-multi-account/claude-multi-account.zsh
+
+# 3. Reload your shell
+source ~/.zshrc
+
+# 4. Add an account slot and log in
+claude-add-account work max5   # creates ~/.claude-work + adds alias + monitor wrapper
+claude-work                    # opens Claude Code under the "work" config
+# Inside Claude: /login
+# Press Ctrl+D when done
+
+# 5. Verify
+claude-whoami
+```
+
+---
+
+## Prerequisites
+
+| Tool | Required | Install |
+|------|----------|---------|
+| [Claude Code CLI](https://claude.ai/code) | ✅ Yes | See link |
+| [ccusage](https://github.com/ryoppippi/ccusage) | Optional | `npm install -g ccusage` |
+| [claude-monitor](https://github.com/doobidoo/claude-monitor) | Optional | `uv tool install claude-monitor` |
+
+> **Note:** `monitor-*` commands require claude-monitor **and** its CLAUDE_CONFIG_DIR patch (see below). Without the patch, all monitor instances read from the same account.
+
+---
+
+## Installation
+
+```bash
+git clone https://github.com/woodylin0920-bit/claude-multi-account.git
 cd claude-multi-account
 bash install.sh
 ```
 
-接著編輯 `~/.config/claude-multi-account/claude-multi-account.zsh`，取消注解帳號 alias：
+`install.sh` copies `claude-multi-account.zsh` to `~/.config/claude-multi-account/` and appends a `source` line to your `~/.zshrc`.
+
+---
+
+## Configuration
+
+After installing, edit the config file:
+
+```bash
+open ~/.config/claude-multi-account/claude-multi-account.zsh
+# or: $EDITOR ~/.config/claude-multi-account/claude-multi-account.zsh
+```
+
+**Uncomment and fill in the alias block** near the top of the file:
 
 ```zsh
-# 改成這樣（照自己的帳號數量增減）：
+# Before (commented out — examples only):
+# alias claude-work='CLAUDE_CONFIG_DIR=$HOME/.claude-work claude'
+# alias claude-personal='CLAUDE_CONFIG_DIR=$HOME/.claude-personal claude'
+
+# After (your actual accounts):
 alias claude-work='CLAUDE_CONFIG_DIR=$HOME/.claude-work claude'
 alias claude-personal='CLAUDE_CONFIG_DIR=$HOME/.claude-personal claude'
 ```
 
-最後套用設定：
+**Also update the monitor wrappers** a few lines below, to match your account names and plans:
+
+```zsh
+monitor-work()     { CLAUDE_CONFIG_DIR=$HOME/.claude-work     claude-monitor --plan max5 "$@"; }
+monitor-personal() { CLAUDE_CONFIG_DIR=$HOME/.claude-personal claude-monitor --plan pro  "$@"; }
+usage-work()       { CLAUDE_CONFIG_DIR=$HOME/.claude-work     ccusage "$@"; }
+usage-personal()   { CLAUDE_CONFIG_DIR=$HOME/.claude-personal ccusage "$@"; }
+```
+
+Then reload: `source ~/.zshrc`
+
+---
+
+## Commands
+
+### Account status
 
 ```bash
-source ~/.zshrc
-```
-
-## 第一次登入各帳號
-
-```bash
-claude-work     # 進入工作帳號的 claude shell
-/login          # 在 claude 裡執行登入
-# 登入完成後 Ctrl+D 離開
-
-claude-personal
-/login
-```
-
-用 `claude-whoami` 驗證登入狀態。
-
-## 指令說明
-
-### 帳號狀態
-
-```
 claude-whoami
 ```
 
-掃描所有 `~/.claude-*` 目錄，顯示各帳號的登入狀態、email 和方案。
+Scans all `~/.claude-*` directories registered in `~/.zshrc` and shows login status, email, and plan for each.
 
-### 新增帳號槽
+### Add an account slot
 
 ```bash
 claude-add-account <name> [plan]
-# plan 預設 pro，可填 pro / max5 / max20
+# plan defaults to "pro" — options: pro / max5 / max20
 
-# 範例
 claude-add-account client1 max5
 ```
 
-自動建立 `~/.claude-client1/`，並在 `~/.zshrc` 加上 alias 和監控 wrapper。
+Creates `~/.claude-client1/` and appends the alias + monitor/usage wrappers to `~/.zshrc`.
 
-### 移除帳號槽
+### Remove an account slot
 
 ```bash
 claude-remove-account client1
 ```
 
-從 `~/.zshrc` 移除對應的 alias 和 monitor/usage wrapper。執行後會詢問是否一併刪除 config 目錄（目錄內含登入 session，預設不刪）。
+Removes the alias and monitor/usage wrappers from `~/.zshrc`. Prompts interactively whether to also delete the config directory (it may contain an active login session, so deletion is opt-in).
 
-### 修改監控 plan
+### Edit monitor plan
 
 ```bash
 claude-edit-plan <name> <plan>
 
-# 範例：把 client1 從 pro 改成 max5
-claude-edit-plan client1 max5
+claude-edit-plan client1 max5   # upgrade client1 from pro to max5
 ```
 
-### 用量監控
+### Usage monitoring
 
 ```bash
-monitor-work        # 即時監測工作帳號（claude-monitor UI）
-monitor-personal    # 即時監測個人帳號
+monitor-work              # live usage dashboard for "work" account (claude-monitor TUI)
+monitor-personal          # live usage dashboard for "personal" account
 
-usage-work          # 工作帳號歷史用量
-usage-work daily    # 日報
-usage-work blocks --live   # 5 小時用量窗口（即時更新）
+usage-work                # usage history for "work" account
+usage-work daily          # daily breakdown
+usage-work blocks --live  # 5-hour rolling window, live-updating
 ```
 
-### 速查
+### Quick reference
 
 ```bash
-claude-help   # 顯示所有指令（動態列出當前帳號）
+claude-help   # print all commands with your current account list
 ```
 
-## API Key 帳號設定
+---
 
-若有 API key 帳號（按量計費），參考 `claude-multi-account.zsh` 頂部的注解：
+## API Key Account
 
-1. 建立 `~/.secrets/claude-api-key`，內容：
+For API key accounts (pay-as-you-go), see the commented instructions near the top of `claude-multi-account.zsh`:
+
+1. Create `~/.secrets/claude-api-key`:
    ```bash
    export ANTHROPIC_API_KEY="sk-ant-api03-..."
    ```
-2. 設定權限：`chmod 600 ~/.secrets/claude-api-key`
-3. 在 `claude-multi-account.zsh` 取消注解 `claude-api` alias 那行
+2. Lock it down: `chmod 600 ~/.secrets/claude-api-key`
+3. Uncomment the `claude-api` alias line in the config file.
 
-## IDE 啟動器設定
+---
 
-若要讓 VS Code / Cursor 的 Claude 擴充功能使用正確帳號，需從 terminal 啟動 IDE。設定方式見 `claude-multi-account.zsh` 中的「IDE launchers」注解區塊。
+## IDE Launcher
 
-## claude-monitor patch
+To ensure VS Code / Cursor extensions use the correct Claude account, launch them from the terminal. See the **IDE launchers** comment block in `claude-multi-account.zsh` for ready-to-use alias templates.
 
-`claude-monitor` 預設不讀取 `CLAUDE_CONFIG_DIR`，需要手動 patch 才能讓 `monitor-*` 系列指令正確隔離帳號。
+---
 
-**確認 / 套用 patch：**
+## claude-monitor Patch
 
-找到 `main.py`：
+By default, `claude-monitor` ignores `CLAUDE_CONFIG_DIR` and always reads from `~/.claude`.
+
+> ⚠️ **Without this patch, `monitor-work` and `monitor-personal` will show data from the same account.** The patch is required for the `monitor-*` wrappers to work correctly.
+
+### Verify / apply the patch
+
+Find `main.py`:
+
 ```bash
 find "$(uv tool dir)/claude-monitor" -name "main.py" -path "*/cli/main.py"
 ```
 
-確認 `get_standard_claude_paths` 函式有以下邏輯（約第 45 行）：
+Open the file and check that `get_standard_claude_paths` (around line 45) looks like this:
 
 ```python
 def get_standard_claude_paths():
@@ -143,23 +198,36 @@ def get_standard_claude_paths():
     return ["~/.claude/projects", "~/.config/claude/projects"]
 ```
 
-若沒有，手動加上這個 `if` 分支即可。
+If the `if config_dir` block is missing, add it manually.
 
-> ⚠️ 執行 `uv tool upgrade claude-monitor` 升級後 patch 會被覆蓋，需重新套用。
+> ⚠️ Running `uv tool upgrade claude-monitor` **overwrites the patch**. Re-apply after every upgrade.
 
-### 可選：更完整的隔離 patch
+### Optional: full isolation patch
 
-`settings.py`、`bootstrap.py`、`display_controller.py` 也有殘留的硬編碼路徑，影響 claude-monitor 自身的 config/cache 儲存位置。若你需要完整隔離，可依同樣方式將這些檔案中的 `Path.home() / ".claude-monitor"` 和 `Path.home() / ".claude"` 改為讀取 `CLAUDE_CONFIG_DIR`。
+`settings.py`, `bootstrap.py`, and `display_controller.py` still contain hardcoded `~/.claude-monitor` and `~/.claude` paths that affect where claude-monitor stores its own config/cache. If you need complete per-account isolation, update those files to read `CLAUDE_CONFIG_DIR` in the same way.
 
-## 目錄結構
+---
+
+## Directory Layout
 
 ```
-~/.claude-work/       ← 工作帳號 config（token、session）
-~/.claude-personal/   ← 個人帳號 config
-~/.claude-client1/    ← 用 claude-add-account 新增的帳號
+~/.claude-work/        ← work account config (token, session)
+~/.claude-personal/    ← personal account config
+~/.claude-client1/     ← added via claude-add-account
 ~/.config/claude-multi-account/
-  claude-multi-account.zsh   ← 工具集主體
+  claude-multi-account.zsh   ← the tool itself (edit aliases here)
 ```
+
+---
+
+## Acknowledgements
+
+This tool is built on top of:
+
+- **[claude-monitor](https://github.com/doobidoo/claude-monitor)** by doobidoo — real-time Claude usage TUI
+- **[ccusage](https://github.com/ryoppippi/ccusage)** by ryoppippi — historical usage reports
+
+---
 
 ## License
 

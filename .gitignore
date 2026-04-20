@@ -1,6 +1,11 @@
 .secrets/
 *.local
 *.local.zsh
+*.local.sh
 .env
 *.bak
+*.swp
+*.swo
 .DS_Store
+.idea/
+.vscode/
